@@ -1,0 +1,131 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 1080px;
+  height: 1440px;
+  overflow: hidden;
+  background: #000;
+  font-family: Inter, "Source Han Sans SC", "Noto Sans CJK SC", Arial, sans-serif;
+}
+.page {
+  position: relative;
+  width: 1080px;
+  height: 1440px;
+  overflow: hidden;
+  color: white;
+  background: #000;
+}
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.20) 45%, rgba(0,0,0,.65));
+}
+.brand {
+  position: absolute;
+  top: 70px;
+  left: 80px;
+  font-size: 24px;
+  letter-spacing: 10px;
+  font-weight: 500;
+  opacity: .78;
+}
+.cover-title {
+  position: absolute;
+  left: 80px;
+  right: 80px;
+  bottom: 240px;
+  font-size: 104px;
+  line-height: .92;
+  font-weight: 800;
+  letter-spacing: -3px;
+}
+.cover-subtitle {
+  position: absolute;
+  left: 84px;
+  bottom: 155px;
+  font-size: 30px;
+  line-height: 1.25;
+  opacity: .85;
+}
+.bottom-card {
+  position: absolute;
+  left: 80px;
+  right: 80px;
+  bottom: 100px;
+  padding: 42px 46px;
+  background: rgba(0,0,0,.58);
+  backdrop-filter: blur(18px);
+}
+.right-card {
+  position: absolute;
+  right: 70px;
+  top: 430px;
+  width: 470px;
+  padding: 42px 44px;
+  background: rgba(0,0,0,.60);
+  backdrop-filter: blur(18px);
+}
+.title {
+  font-size: 52px;
+  line-height: 1.04;
+  font-weight: 760;
+  letter-spacing: -1px;
+  margin-bottom: 24px;
+}
+.body {
+  white-space: pre-line;
+  font-size: 31px;
+  line-height: 1.42;
+  font-weight: 430;
+  opacity: .92;
+}
+.center-title {
+  position: absolute;
+  left: 90px;
+  right: 90px;
+  top: 530px;
+  text-align: center;
+  font-size: 84px;
+  line-height: 1;
+  font-weight: 820;
+}
+.center-body {
+  position: absolute;
+  left: 120px;
+  right: 120px;
+  top: 690px;
+  text-align: center;
+  white-space: pre-line;
+  font-size: 38px;
+  line-height: 1.35;
+  opacity: .9;
+}
+.top-title {
+  position: absolute;
+  left: 80px;
+  right: 80px;
+  top: 170px;
+  font-size: 58px;
+  line-height: 1.05;
+  font-weight: 800;
+}
+.bottom-body {
+  position: absolute;
+  left: 80px;
+  right: 80px;
+  bottom: 130px;
+  padding: 36px 42px;
+  background: rgba(0,0,0,.60);
+  font-size: 36px;
+  line-height: 1.35;
+}
+.page-core_point .overlay {
+  background: rgba(0,0,0,.72);
+}

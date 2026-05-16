@@ -1,0 +1,47 @@
+{
+  "account_name": "Neue Garage",
+  "style": "minimal_german_magazine",
+  "canvas_size": {
+    "width": 1080,
+    "height": 1440
+  },
+  "default_model_openai": "gpt-4.1-mini",
+  "default_model_ollama": "qwen3:14b",
+  "miit": {
+    "announcement_pages": [
+      "https://www.miit-eidc.org.cn/col/col1691/index.html",
+      "https://www.miit-eidc.org.cn/col/col1576/index.html"
+    ],
+    "query_system": "https://service.miit-eidc.org.cn/miitxxgk/gonggao/xxgk/index?querylb=qy",
+    "keywords": [
+      "道路机动车辆生产企业及产品",
+      "新产品公示",
+      "公告",
+      "新能源汽车",
+      "乘用车",
+      "宝马",
+      "BMW",
+      "小米",
+      "保时捷",
+      "奔驰",
+      "现代",
+      "IONIQ",
+      "i3",
+      "iX3"
+    ]
+  },
+  "brand_sources": {
+    "BMW": [
+      "https://www.press.bmwgroup.com/global"
+    ],
+    "Porsche": [
+      "https://newsroom.porsche.com/"
+    ],
+    "Mercedes-Benz": [
+      "https://media.mercedes-benz.com/"
+    ],
+    "Hyundai": [
+      "https://www.hyundai.news/"
+    ]
+  }
+}

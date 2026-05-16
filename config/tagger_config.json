@@ -1,0 +1,167 @@
+{
+  "default_brand": "BMW",
+  "default_model": "i3",
+  "default_series": "Neue Klasse",
+  "rename_pattern": "{brand}_{model}_{category}_{tag}_{index}",
+  "image_extensions": [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp"
+  ],
+  "keywords": {
+    "interior": [
+      "interior",
+      "cockpit",
+      "dashboard",
+      "steering",
+      "screen",
+      "seat",
+      "cabin",
+      "inside",
+      "内饰",
+      "座舱",
+      "中控",
+      "方向盘",
+      "屏幕",
+      "座椅"
+    ],
+    "history": [
+      "history",
+      "archive",
+      "classic",
+      "old",
+      "e46",
+      "f30",
+      "g20",
+      "heritage",
+      "历史",
+      "经典",
+      "老车",
+      "档案"
+    ],
+    "lifestyle": [
+      "lifestyle",
+      "city",
+      "urban",
+      "road",
+      "night",
+      "people",
+      "street",
+      "生活",
+      "城市",
+      "街道",
+      "夜景"
+    ],
+    "detail": [
+      "detail",
+      "headlight",
+      "taillight",
+      "tail",
+      "light",
+      "wheel",
+      "rim",
+      "platform",
+      "tech",
+      "architecture",
+      "badge",
+      "grille",
+      "灯",
+      "尾灯",
+      "轮毂",
+      "平台",
+      "技术",
+      "细节",
+      "格栅"
+    ],
+    "exterior": [
+      "exterior",
+      "front",
+      "rear",
+      "side",
+      "profile",
+      "cover",
+      "hero",
+      "threequarter",
+      "45",
+      "outside",
+      "外观",
+      "车头",
+      "车尾",
+      "侧面",
+      "整车"
+    ]
+  },
+  "tags": {
+    "cover": [
+      "cover",
+      "hero",
+      "main",
+      "dark",
+      "front",
+      "45",
+      "封面"
+    ],
+    "front": [
+      "front",
+      "headlight",
+      "grille",
+      "车头",
+      "前脸"
+    ],
+    "side_profile": [
+      "side",
+      "profile",
+      "侧面",
+      "比例"
+    ],
+    "rear": [
+      "rear",
+      "tail",
+      "taillight",
+      "车尾",
+      "尾灯"
+    ],
+    "cockpit": [
+      "interior",
+      "cockpit",
+      "dashboard",
+      "cabin",
+      "座舱",
+      "中控",
+      "内饰"
+    ],
+    "steering": [
+      "steering",
+      "方向盘"
+    ],
+    "tech_platform": [
+      "platform",
+      "tech",
+      "architecture",
+      "技术",
+      "平台",
+      "架构"
+    ],
+    "history_archive": [
+      "history",
+      "archive",
+      "classic",
+      "e46",
+      "f30",
+      "g20",
+      "历史",
+      "经典"
+    ],
+    "city_lifestyle": [
+      "city",
+      "urban",
+      "lifestyle",
+      "night",
+      "road",
+      "城市",
+      "生活",
+      "夜景"
+    ]
+  }
+}

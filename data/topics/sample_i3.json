@@ -1,0 +1,105 @@
+{
+  "brand": "BMW",
+  "series": "Neue Klasse",
+  "model": "i3",
+  "topic": "宝马终于开始真正做电动车了",
+  "column": "新车档案",
+  "cover": {
+    "title": "THE NEW i3",
+    "subtitle": "BMW finally changed.",
+    "image_hint": "45度前侧官方图"
+  },
+  "pages": [
+    {
+      "page": 1,
+      "role": "cover",
+      "title": "THE NEW i3",
+      "body": "BMW finally changed.",
+      "image_hint": "45度前侧官方图，暗色背景"
+    },
+    {
+      "page": 2,
+      "role": "opening",
+      "title": "宝马终于开始真正做电动车了。",
+      "body": "Not a gasoline car converted into EV.",
+      "image_hint": "车头或灯组特写"
+    },
+    {
+      "page": 3,
+      "role": "design",
+      "title": "A completely different proportion.",
+      "body": "短前悬、更长轴距、更低的视觉重心。",
+      "image_hint": "侧面图，突出比例"
+    },
+    {
+      "page": 4,
+      "role": "interior",
+      "title": "BMW is redesigning interaction itself.",
+      "body": "最大的变化不是外观，而是座舱里的交互逻辑。",
+      "image_hint": "内饰全景或中控图"
+    },
+    {
+      "page": 5,
+      "role": "history",
+      "title": "E46 → F30 → G20 → Neue Klasse",
+      "body": "宝马花了二十多年，才真正进入下一个时代。",
+      "image_hint": "历史车型拼图或时间线"
+    },
+    {
+      "page": 6,
+      "role": "technology",
+      "title": "This is not just another EV.",
+      "body": "新平台、电子架构、智能交互。",
+      "image_hint": "平台结构图或官方技术图"
+    },
+    {
+      "page": 7,
+      "role": "core_point",
+      "title": "不是设计。",
+      "body": "Neue Klasse真正重要的，是宝马终于愿意重新定义自己。",
+      "image_hint": "黑底或模糊车身局部"
+    },
+    {
+      "page": 8,
+      "role": "audience",
+      "title": "这不是给所有老宝马用户准备的车。",
+      "body": "但它很可能是宝马未来十年的方向。",
+      "image_hint": "城市生活方式图"
+    },
+    {
+      "page": 9,
+      "role": "interaction",
+      "title": "你觉得 Neue Klasse 是进化，还是失去灵魂？",
+      "body": "Neue Garage / Brand Archive",
+      "image_hint": "尾灯或车尾图"
+    }
+  ],
+  "xiaohongshu": {
+    "title_options": [
+      "宝马终于开始真正做电动车了"
+    ],
+    "caption": "宝马终于意识到：“燃油车改电车”的时代结束了。",
+    "hashtags": [
+      "#宝马",
+      "#BMW",
+      "#NeueKlasse"
+    ]
+  },
+  "douyin": {
+    "title": "宝马终于开始真正做电动车了",
+    "bgm_keywords": [
+      "ambient electronic"
+    ],
+    "subtitles": [
+      "宝马终于开始真正做电动车了。",
+      "Neue Klasse 不是一次简单换代。",
+      "它更像是宝马对自己的重新定义。"
+    ]
+  },
+  "asset_plan": {
+    "required_images": [],
+    "recommended_sources": [
+      "BMW Group PressClub"
+    ]
+  }
+}

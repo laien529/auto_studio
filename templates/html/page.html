@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>{{ css }}</style>
+</head>
+<body>
+  <div class="page page-{{ page.role }}">
+    <img class="bg" src="{{ image_path }}" />
+    <div class="overlay"></div>
+
+    <div class="brand">{{ account_name }}</div>
+
+    {% if page.role == "cover" %}
+      <div class="cover-title">{{ page.title }}</div>
+      <div class="cover-subtitle">{{ page.body }}</div>
+    {% elif page.role == "core_point" %}
+      <div class="center-title">{{ page.title }}</div>
+      <div class="center-body">{{ page.body }}</div>
+    {% elif page.role == "history" %}
+      <div class="top-title">{{ page.title }}</div>
+      <div class="bottom-body">{{ page.body }}</div>
+    {% elif page.role in ["design", "technology"] %}
+      <div class="right-card">
+        <div class="title">{{ page.title }}</div>
+        <div class="body">{{ page.body }}</div>
+      </div>
+    {% else %}
+      <div class="bottom-card">
+        <div class="title">{{ page.title }}</div>
+        <div class="body">{{ page.body }}</div>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>
