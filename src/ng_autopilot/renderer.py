@@ -1,4 +1,3 @@
-\
 from __future__ import annotations
 
 import json
@@ -30,7 +29,9 @@ def render_html_files(root: Path, content: dict, matched_rows: list[dict], proje
     return html_out
 
 
-def export_png_with_playwright(html_dir: Path, png_dir: Path, width: int = 1080, height: int = 1440) -> None:
+def export_png_with_playwright(
+    html_dir: Path, png_dir: Path, width: int = 1080, height: int = 1440, device_scale_factor: int = 2
+) -> None:
     from playwright.sync_api import sync_playwright
 
     png_dir.mkdir(parents=True, exist_ok=True)
@@ -38,7 +39,11 @@ def export_png_with_playwright(html_dir: Path, png_dir: Path, width: int = 1080,
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=1)
+        # device_scale_factor=2 enables Retina high-DPI scaling, making screenshots 2160x2880.
+        # This keeps the image textures extremely crisp and text curves perfectly smooth.
+        page = browser.new_page(
+            viewport={"width": width, "height": height}, device_scale_factor=device_scale_factor
+        )
         for f in files:
             page.goto(f.resolve().as_uri(), wait_until="networkidle")
             page.screenshot(path=str(png_dir / f"{f.stem}.png"), full_page=True)

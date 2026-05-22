@@ -1,4 +1,3 @@
-\
 from pathlib import Path
 import json
 import sys
@@ -11,13 +10,26 @@ from ng_autopilot.image_matcher import match_images
 from ng_autopilot.renderer import render_html_files, export_png_with_playwright
 from ng_autopilot.video import make_srt, make_video
 
-PROJECT = "bmw_i3"
-TOPIC = "BMW Neue Klasse i3"
-COLUMN = "新车档案"
-ANGLE = "宝马终于开始真正做电动车了"
-ASSETS = ROOT / "assets" / "library" / "BMW" / "i3"
+import argparse
 
-data = generate_openai(ROOT, TOPIC, COLUMN, ANGLE)
+parser = argparse.ArgumentParser(description="Run Autopilot using OpenAI")
+parser.add_argument("--name", default="bmw_i3", help="Project/output name")
+parser.add_argument("--topic", default="BMW Neue Klasse i3", help="Topic for LLM to write about")
+parser.add_argument("--column", default="新车档案", help="Column style name")
+parser.add_argument("--angle", default="宝马终于开始真正做电动车了", help="Angle/hook for the copywriting")
+parser.add_argument("--assets", default="assets/library/BMW/i3", help="Assets library directory path relative to project root")
+parser.add_argument("--model", default="gpt-4.1-mini", help="OpenAI model to use for content generation")
+parser.add_argument("--scale-factor", type=int, default=2, help="Device scale factor for Playwright rendering (1 for standard, 2 for Retina 2K, 3 for 3K)")
+args = parser.parse_args()
+
+PROJECT = args.name
+TOPIC = args.topic
+COLUMN = args.column
+ANGLE = args.angle
+ASSETS = ROOT / args.assets
+MODEL = args.model
+
+data = generate_openai(ROOT, TOPIC, COLUMN, ANGLE, model=MODEL)
 content_path = save_content(ROOT, data, PROJECT)
 
 matched = match_images(
@@ -29,7 +41,7 @@ matched = match_images(
 
 html_dir = render_html_files(ROOT, data, matched["rows"], PROJECT)
 png_dir = ROOT / "outputs" / "images" / PROJECT
-export_png_with_playwright(html_dir, png_dir)
+export_png_with_playwright(html_dir, png_dir, device_scale_factor=args.scale_factor)
 
 make_srt(data.get("douyin", {}).get("subtitles", []), ROOT / "outputs" / "video" / f"{PROJECT}.srt")
 
