@@ -62,33 +62,16 @@ outputs/reports/miit_monitor_*.json
 
 # 3. 准备图片
 
-把官方图放到：
+把下载的官方图片全部放入：
 
 ```text
-assets/library/BMW/i3/
-├── exterior/
-├── interior/
-├── detail/
-├── lifestyle/
-└── history/
-```
+assets/inbox/
 
-推荐命名：
-
-```text
-cover_front_dark.jpg
-front_headlight.jpg
-side_profile.jpg
-interior_cockpit.jpg
-history_e46.jpg
-tech_platform.jpg
-detail_dark.jpg
-lifestyle_city.jpg
-rear_taillight.jpg
+一键脚本详见：AUTO_ASSET_TAGGER_GUIDE.md
 ```
 
 ---
-
+<!-- 
 # 4. OpenAI一键生成
 
 设置：
@@ -109,12 +92,12 @@ python scripts/run_autopilot_openai.py
 # 5. Ollama本地生成
 
 ```bash
-ollama pull qwen3:14b
+ollama pull qwen2.5vl
 python scripts/run_autopilot_ollama.py
-```
+``` -->
 
 ---
-
+<!-- 
 # 6. 用已有JSON直接出图
 
 ```bash
@@ -132,7 +115,7 @@ python scripts/run_from_existing_json.py \
 outputs/images/项目名/page_1.png ... page_9.png
 outputs/video/项目名.srt
 outputs/video/项目名.mp4
-outputs/content/项目名_canva.csv
+outputs/content/项目名_canva.csv -->
 ```
 
 ---

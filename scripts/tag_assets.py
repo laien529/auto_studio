@@ -16,6 +16,7 @@ parser.add_argument("--model", default=None)
 parser.add_argument("--series", default=None)
 parser.add_argument("--name", default="project")
 parser.add_argument("--move", action="store_true")
+parser.add_argument("--vision", action="store_true", help="Use vision model for tagging instead of keyword heuristics.")
 args = parser.parse_args()
 
 records = tag_assets(
@@ -26,6 +27,7 @@ records = tag_assets(
     model=args.model,
     series=args.series,
     move=args.move,
+    use_vision=args.vision,
 )
 reports = write_reports(records, ROOT / "outputs" / "reports", args.name)
 print("DONE")

@@ -6,7 +6,7 @@
     "height": 1440
   },
   "default_model_openai": "gpt-4.1-mini",
-  "default_model_ollama": "qwen3:14b",
+  "default_model_ollama": "qwen2.5vl",
   "miit": {
     "announcement_pages": [
       "https://www.miit-eidc.org.cn/col/col1691/index.html",

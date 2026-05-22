@@ -1,8 +1,13 @@
 {
-  "default_brand": "BMW",
-  "default_model": "i3",
-  "default_series": "Neue Klasse",
+  "default_brand": "unknown",
+  "default_model": "unknown",
+  "default_series": "unknown",
   "rename_pattern": "{brand}_{model}_{category}_{tag}_{index}",
+  "vision_config": {
+    "api_base": "http://localhost:11434/v1",
+    "model": "qwen2.5vl",
+    "api_key": "ollama"
+  },
   "image_extensions": [
     ".jpg",
     ".jpeg",
@@ -24,7 +29,9 @@
       "中控",
       "方向盘",
       "屏幕",
-      "座椅"
+      "座椅",
+      "轮圈",
+      "零件"
     ],
     "history": [
       "history",

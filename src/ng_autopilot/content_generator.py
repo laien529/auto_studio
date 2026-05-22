@@ -30,7 +30,7 @@ def generate_openai(root: Path, topic: str, column: str, angle: str, context: st
     return json.loads(resp.choices[0].message.content)
 
 
-def generate_ollama(root: Path, topic: str, column: str, angle: str, context: str = "", model: str = "qwen3:14b") -> dict:
+def generate_ollama(root: Path, topic: str, column: str, angle: str, context: str = "", model: str = "qwen2.5vl") -> dict:
     from langchain_ollama import ChatOllama
 
     prompt = build_prompt(root, topic, column, angle, context)
