@@ -154,9 +154,9 @@ Do not include any other text or explanations in your response.
         if api_base:
             # Ollama SDK expects the base host without the OpenAI-compatible '/v1' suffix
             host = api_base[:-3] if api_base.endswith("/v1") else api_base
-            client = ollama.Client(host=host)
+            client = ollama.Client(host=host, timeout=12.0)
         else:
-            client = ollama.Client()
+            client = ollama.Client(timeout=12.0)
         
         # Dynamically limit thread count and context size to avoid memory swap and CPU freezing
         import os
@@ -206,6 +206,39 @@ Do not include any other text or explanations in your response.
             except Exception:
                 pass
 
+def check_gpu_acceleration(model_name: str, api_base: str | None = None) -> Tuple[bool, str]:
+    """
+    Probes if the vision model is successfully running with GPU VRAM acceleration in Ollama.
+    Returns (is_accelerated, message).
+    """
+    try:
+        import ollama
+        # Give up to 25 seconds for the model to load into memory on the first run
+        client = ollama.Client(host=host, timeout=25.0) if host else ollama.Client(timeout=25.0)
+        
+        # 1. Send a very fast dummy generation call to force Ollama to load the model
+        print(f"  [GPU Probe] Testing model '{model_name}' hardware acceleration...")
+        client.generate(model=model_name, prompt="a", keep_alive=300) # keeps loaded for 5 min
+        
+        # 2. Check the active models in memory
+        ps_resp = client.ps()
+        for m in getattr(ps_resp, "models", []):
+            m_name = getattr(m, "model", "")
+            if m_name == model_name or m_name.replace(":latest", "") == model_name.replace(":latest", ""):
+                size = getattr(m, "size", 0) or 0
+                size_vram = getattr(m, "size_vram", 0) or 0
+                processor = getattr(m, "processor", "")
+                
+                # Check for CPU fallback
+                if "CPU" in str(processor).upper() or (size > 0 and size_vram == 0):
+                    return False, f"Ollama loads on CPU (VRAM: {size_vram}/{size} bytes). GPU acceleration is unavailable!"
+                else:
+                    return True, f"Natively accelerated on GPU ({processor or 'Metal/VRAM'})."
+                    
+        return True, "Model loaded (assuming GPU acceleration is active)."
+    except Exception as e:
+        return False, f"Failed to verify hardware acceleration: {e}"
+
 def next_available_path(path: Path) -> Path:
     if not path.exists():
         return path
@@ -226,6 +259,10 @@ def tag_assets(root: Path, inbox: Path, library: Path, brand=None, model=None, s
     total = len(images)
     print(f"Scanning inbox: found {total} images to process.")
     records, seen_hashes, counters, api_base, model_to_use = [], set(), {}, None, None
+
+    # Track GPU diagnostic status
+    gpu_checked = False
+    vision_cpu_fallback = False
 
     for idx, img_path in enumerate(images, 1):
         print(f"[{idx}/{total}] Processing: {img_path.name}...")
@@ -273,10 +310,23 @@ def tag_assets(root: Path, inbox: Path, library: Path, brand=None, model=None, s
                         if not model_to_use:
                             raise ValueError("'model' must be specified in 'vision_config' or 'settings.json'.")
 
-                print(f"  Calling vision model ({model_to_use})...")
-                category, tag, score = _classify_image_with_vision_model(api_base, img_path, cfg, brand, model, model_name=model_to_use)
-                if category == "unknown" or tag == "unknown":
+                # Perform the hardware diagnostic once
+                if not gpu_checked and not vision_cpu_fallback:
+                    gpu_checked = True
+                    is_gpu, msg = check_gpu_acceleration(model_to_use, api_base)
+                    print(f"  [GPU Diagnostic] {msg}")
+                    if not is_gpu:
+                        print("  ⚠️ WARNING: The selected vision model is loaded on CPU (no GPU acceleration).")
+                        print("  To prevent your Mac from freezing, we will automatically fallback to the high-speed keyword heuristics tagger!")
+                        vision_cpu_fallback = True
+
+                if vision_cpu_fallback:
                     vision_failed = True
+                else:
+                    print(f"  Calling vision model ({model_to_use})...")
+                    category, tag, score = _classify_image_with_vision_model(api_base, img_path, cfg, brand, model, model_name=model_to_use)
+                    if category == "unknown" or tag == "unknown":
+                        vision_failed = True
             except Exception as e:
                 print(f"  Vision model call failed: {e}")
                 vision_failed = True

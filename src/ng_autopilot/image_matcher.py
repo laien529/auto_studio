@@ -160,6 +160,7 @@ def match_images(content: dict, assets_root: Path, out_assets: Path, csv_path: P
             "image_hint": page.get("image_hint", ""),
             "image_filename": filename,
             "image_path": str(target),
+            "category": best_img.parent.name,
         }
         rows.append(row)
         report.append({"page": page_num, "source": str(best_img), "target": str(target), "score": best_score})

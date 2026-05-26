@@ -53,7 +53,8 @@ def generate_ollama(root: Path, topic: str, column: str, angle: str, context: st
     num_ctx = settings.get("ollama_num_ctx", 2048)
 
     prompt = build_prompt(root, topic, column, angle, context)
-    llm = ChatOllama(model=model, temperature=0.65, num_ctx=num_ctx, num_thread=num_threads)
+    # Set a strict 45-second timeout to prevent infinite loops or chokes
+    llm = ChatOllama(model=model, temperature=0.65, num_ctx=num_ctx, num_thread=num_threads, timeout=45.0)
     resp = llm.invoke(prompt)
     text = resp.content
     start = text.find("{")

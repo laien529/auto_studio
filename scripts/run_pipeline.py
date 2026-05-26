@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--series", default=None, help="Car series for tagging.")
     parser.add_argument("--move", action="store_true", help="Move assets instead of copying them during tagging.")
     parser.add_argument("--vision", action="store_true", help="Use vision LLM model for tagging instead of keyword heuristics.")
+    parser.add_argument("--vision-model", default=None, help="Vision LLM model name to use for asset tagging. If not specified, dynamically resolved from settings.json.")
     
     # Generation stage arguments
     parser.add_argument("--skip-generation", action="store_true", help="Skip the HTML/Image/Video generation stage.")
@@ -54,6 +55,18 @@ def main():
             pass
         if not args.llm_model:
             args.llm_model = "qwen2.5vl" if args.provider == "ollama" else "gpt-4.1-mini"
+
+    # Resolve default vision model
+    if not args.vision_model:
+        try:
+            settings_path = ROOT / "config" / "settings.json"
+            if settings_path.exists():
+                settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
+                args.vision_model = settings_data.get("default_model_vision")
+        except Exception:
+            pass
+        if not args.vision_model:
+            args.vision_model = args.llm_model or "qwen2.5vl"
     
     # Validate arguments
     if not args.skip_generation and not args.content:
@@ -84,7 +97,7 @@ def main():
             series=args.series,
             move=args.move,
             use_vision=args.vision,
-            vision_model=args.llm_model,
+            vision_model=args.vision_model,
         )
         reports = write_reports(records, ROOT / "outputs" / "reports", args.name)
         print(f"  DONE: Tagged {len(records)} assets.")

@@ -23,6 +23,7 @@ class PipelineManager:
         self.queue = queue.Queue()
         self.thread = None
         self.project_name = ""
+        self.start_time = 0.0
 
     def start(self, cmd: list[str], project_name: str) -> bool:
         if self.running:
@@ -33,6 +34,9 @@ class PipelineManager:
         self.exit_code = None
         self.project_name = project_name
         self.queue = queue.Queue()
+        
+        import time
+        self.start_time = time.time()
         
         self.logs.append(f"$ {' '.join(cmd)}\n")
         self.logs.append("Initializing Auto Studio Autopilot Dashboard...\n")
@@ -194,17 +198,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if self.path == "/" or self.path == "/index.html":
             default_ollama = "qwen2.5vl"
             default_openai = "gpt-4.1-mini"
+            default_vision = "qwen2.5vl"
             try:
                 settings_path = ROOT / "config" / "settings.json"
                 if settings_path.exists():
                     settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
                     default_ollama = settings_data.get("default_model_ollama", "qwen2.5vl")
                     default_openai = settings_data.get("default_model_openai", "gpt-4.1-mini")
+                    default_vision = settings_data.get("default_model_vision", "qwen2.5vl")
             except Exception:
                 pass
                 
             # 1. Dynamically build Ollama dropdown options by querying local Ollama tags
-            ollama_options_html = f'<option class="opt-ollama" value="{default_ollama}">默认模型 ({default_ollama})</option>'
+            ollama_options_html = ""
+            ollama_options_vision_html = ""
+            models_list = []
             try:
                 import ollama
                 
@@ -226,7 +234,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 else:
                     models_list = []
                 
-                seen_names = {default_ollama}
+                text_models = []
+                vision_models = []
+                
                 for m in models_list:
                     m_name = None
                     if hasattr(m, "model"):
@@ -237,33 +247,73 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         m_name = m.get("model") or m.get("name")
                     else:
                         m_name = str(m)
+                    
+                    if not m_name:
+                        continue
                         
-                    if m_name and m_name not in seen_names:
-                        display_name = m_name
-                        if ":" in m_name:
-                            name_part, tag_part = m_name.split(":", 1)
-                            if tag_part == "latest":
-                                display_name = name_part
-                        ollama_options_html += f'<option class="opt-ollama" value="{m_name}">{display_name}</option>'
-                        seen_names.add(m_name)
+                    is_vision = False
+                    try:
+                        show_resp = client.show(m_name)
+                        if hasattr(show_resp, "capabilities") and "vision" in show_resp.capabilities:
+                            is_vision = True
+                    except Exception:
+                        name_lower = m_name.lower()
+                        if "vl" in name_lower or "vision" in name_lower or "llava" in name_lower or "doctype" in name_lower:
+                            is_vision = True
+                            
+                    if is_vision:
+                        vision_models.append(m_name)
+                    else:
+                        text_models.append(m_name)
+                        
+                # Build Text LLM dropdown list (Text models first, then Vision models marked clearly)
+                seen_text = {default_ollama}
+                default_display = f"默认模型 ({default_ollama} [视觉 VL])" if default_ollama in vision_models else f"默认模型 ({default_ollama} [文本 LLM])"
+                ollama_options_html += f'<option class="opt-ollama" value="{default_ollama}">{default_display}</option>'
+                
+                for m in text_models:
+                    if m != default_ollama and m not in seen_text:
+                        ollama_options_html += f'<option class="opt-ollama" value="{m}">{m} [文本 LLM]</option>'
+                        seen_text.add(m)
+                for m in vision_models:
+                    if m != default_ollama and m not in seen_text:
+                        ollama_options_html += f'<option class="opt-ollama" value="{m}">{m} [视觉 VL]</option>'
+                        seen_text.add(m)
+                        
+                # Build Vision LLM dropdown list (STRICTLY filter to show ONLY vision-capable models!)
+                seen_vision = {default_vision}
+                default_vision_display = f"默认视觉模型 ({default_vision} [视觉 VL])"
+                ollama_options_vision_html += f'<option value="{default_vision}">{default_vision_display}</option>'
+                for m in vision_models:
+                    if m != default_vision and m not in seen_vision:
+                        ollama_options_vision_html += f'<option value="{m}">{m} [视觉 VL]</option>'
+                        seen_vision.add(m)
+                        
             except Exception:
-                # Local Ollama client fail fallback to static defaults
-                static_ollama = ["qwen2.5vl", "qwen3.5:9b", "deepseek-r1:8b", "llama3.2:latest"]
+                # Local Ollama client fail fallback to static defaults with explicit labels
+                ollama_options_html = f'<option class="opt-ollama" value="{default_ollama}">默认模型 ({default_ollama} [视觉 VL])</option>'
+                static_ollama = ["qwen3.5:9b", "deepseek-r1:8b", "llama3.2:latest"]
                 for m in static_ollama:
                     if m != default_ollama:
-                        ollama_options_html += f'<option class="opt-ollama" value="{m}">{m}</option>'
+                        ollama_options_html += f'<option class="opt-ollama" value="{m}">{m} [文本 LLM]</option>'
+                
+                ollama_options_vision_html = f'<option value="{default_vision}">默认视觉模型 ({default_vision} [视觉 VL])</option>'
+                static_ollama_vision = ["qwen2.5vl", "mikgr/doctype-classifier-vl:latest"]
+                for m in static_ollama_vision:
+                    if m != default_vision:
+                        ollama_options_vision_html += f'<option value="{m}">{m} [视觉 VL]</option>'
 
             # 2. Build OpenAI dropdown options
-            openai_options_html = f'<option class="opt-openai" value="{default_openai}" style="display:none;">默认模型 ({default_openai})</option>'
+            openai_options_html = f'<option class="opt-openai" value="{default_openai}" style="display:none;">默认模型 ({default_openai} [文本 LLM])</option>'
             static_openai = ["gpt-4.1-mini", "gpt-4o", "o3-mini"]
             for m in static_openai:
                 if m != default_openai:
                     display = "gpt-4o-mini" if m == "gpt-4.1-mini" else m
-                    openai_options_html += f'<option class="opt-openai" value="{m}" style="display:none;">{display}</option>'
+                    openai_options_html += f'<option class="opt-openai" value="{m}" style="display:none;">{display} [文本 LLM]</option>'
                 
             # Replace placeholders in HTML
-            html = HTML_CONTENT.replace("{{DEFAULT_OLLAMA_MODEL}}", default_ollama).replace("{{DEFAULT_OPENAI_MODEL}}", default_openai)
-            html = html.replace("{{OLLAMA_MODEL_OPTIONS}}", ollama_options_html).replace("{{OPENAI_MODEL_OPTIONS}}", openai_options_html)
+            html = HTML_CONTENT.replace("{{DEFAULT_OLLAMA_MODEL}}", default_ollama).replace("{{DEFAULT_OPENAI_MODEL}}", default_openai).replace("{{DEFAULT_VISION_MODEL}}", default_vision)
+            html = html.replace("{{OLLAMA_MODEL_OPTIONS}}", ollama_options_html).replace("{{OPENAI_MODEL_OPTIONS}}", openai_options_html).replace("{{OLLAMA_MODEL_OPTIONS_VISION}}", ollama_options_vision_html)
             
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -307,6 +357,25 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if video_path.exists():
                     video_url = f"/outputs/video/{manager.project_name}.mp4"
 
+            # Calculate elapsed time in seconds for backend-to-frontend synchronization
+            import time
+            elapsed = 0
+            if manager.running and manager.start_time:
+                elapsed = int(time.time() - manager.start_time)
+
+            # Retrieve matched assets with category info if available
+            matched_assets = []
+            if manager.project_name:
+                canva_csv = ROOT / "outputs" / "content" / f"{manager.project_name}_canva.csv"
+                if canva_csv.exists():
+                    try:
+                        import csv
+                        with canva_csv.open(encoding="utf-8-sig") as f:
+                            reader = csv.DictReader(f)
+                            matched_assets = list(reader)
+                    except Exception:
+                        pass
+
             res = {
                 "running": manager.running,
                 "exit_code": manager.exit_code,
@@ -314,7 +383,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "logs": manager.logs,
                 "screenshots": screenshots,
                 "reports": reports,
-                "video_url": video_url
+                "video_url": video_url,
+                "elapsed": elapsed,
+                "matched_assets": matched_assets
             }
             
             self.send_response(200)
@@ -361,6 +432,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             model_name = params.get("model_name")
             if model_name and model_name != "default":
                 cmd.extend(["--llm-model", model_name])
+
+            vision_model = params.get("vision_model")
+            if vision_model and vision_model != "default":
+                cmd.extend(["--vision-model", vision_model])
             
             if params.get("move"):
                 cmd.append("--move")
@@ -980,9 +1055,9 @@ HTML_CONTENT = """<!DOCTYPE html>
 
         /* Image Showcase */
         .screenshots-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-            gap: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
             max-height: 520px;
             overflow-y: auto;
             padding-right: 8px;
@@ -1162,7 +1237,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="model_name">大模型名称</label>
+                            <label for="model_name">文本大模型 (Text LLM)</label>
                             <select id="model_name">
                                 <!-- Ollama Options -->
                                 {{OLLAMA_MODEL_OPTIONS}}
@@ -1174,16 +1249,14 @@ HTML_CONTENT = """<!DOCTYPE html>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="name">项目标识符 (文件夹名)</label>
-                            <input type="text" id="name" value="bmw_i3" placeholder="例如: bmw_i3" required>
+                            <label for="vision_model">多模态视觉模型 (Vision LLM)</label>
+                            <select id="vision_model">
+                                {{OLLAMA_MODEL_OPTIONS_VISION}}
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label for="scale_factor">渲染分辨率</label>
-                            <select id="scale_factor">
-                                <option value="2" selected>Retina 2K 超清 (2160x2880, 强烈推荐)</option>
-                                <option value="3">4K 极致画质 (3240x4320)</option>
-                                <option value="1">1x 快速预览 (1080x1440)</option>
-                            </select>
+                            <label for="name">项目标识符 (文件夹名)</label>
+                            <input type="text" id="name" value="bmw_i3" placeholder="例如: bmw_i3" required>
                         </div>
                     </div>
 
@@ -1212,13 +1285,23 @@ HTML_CONTENT = """<!DOCTYPE html>
                         <input type="text" id="angle" value="宝马终于开始真正做电动车了" placeholder="例如: 百年品牌的电动逆袭">
                     </div>
 
-                    <div class="form-group">
-                        <label for="column">栏目风格样式</label>
-                        <select id="column">
-                            <option value="新车档案" selected>新车档案 (偏严谨科普)</option>
-                            <option value="犀利车评">犀利车评 (偏吐槽主观)</option>
-                            <option value="买车指南">买车指南 (偏性价比分析)</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="column">栏目风格样式</label>
+                            <select id="column">
+                                <option value="新车档案" selected>新车档案 (偏严谨科普)</option>
+                                <option value="犀利车评">犀利车评 (偏吐槽主观)</option>
+                                <option value="买车指南">买车指南 (偏性价比分析)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="scale_factor">渲染分辨率</label>
+                            <select id="scale_factor">
+                                <option value="2" selected>Retina 2K 超清 (2160x2880, 强烈推荐)</option>
+                                <option value="3">4K 极致画质 (3240x4320)</option>
+                                <option value="1">1x 快速预览 (1080x1440)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-group" style="margin-top: 10px;">
@@ -1407,16 +1490,20 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
 
         // Timer controller
-        function startTimer() {
+        let startTime = null;
+        function startTimer(initialSeconds = 0) {
             clearInterval(timerInterval);
-            secondsElapsed = 0;
-            document.getElementById("pipeline-timer").innerText = "00:00";
-            timerInterval = setInterval(() => {
-                secondsElapsed++;
-                const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
-                const secs = String(secondsElapsed % 60).padStart(2, '0');
-                document.getElementById("pipeline-timer").innerText = `${mins}:${secs}`;
-            }, 1000);
+            startTime = Date.now() - (initialSeconds * 1000);
+            updateTimerDisplay();
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        function updateTimerDisplay() {
+            if (!startTime) return;
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const secs = String(elapsed % 60).padStart(2, '0');
+            document.getElementById("pipeline-timer").innerText = `${mins}:${secs}`;
         }
 
         function stopTimer() {
@@ -1531,6 +1618,10 @@ HTML_CONTENT = """<!DOCTYPE html>
 
                 if (data.running) {
                     setSystemState("running", "工作流执行中...");
+                    // Synchronize running timer from backend to ensure background-tab accuracy
+                    if (data.elapsed !== undefined && isRunning && startTime) {
+                        startTime = Date.now() - (data.elapsed * 1000);
+                    }
                 } else {
                     stopTimer();
                     clearInterval(pollInterval);
@@ -1606,6 +1697,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                 angle: document.getElementById("angle").value,
                 column: document.getElementById("column").value,
                 model_name: document.getElementById("model_name").value,
+                vision_model: document.getElementById("vision_model").value,
                 provider: document.getElementById("provider").value,
                 scale_factor: parseInt(document.getElementById("scale_factor").value),
                 vision: document.getElementById("vision").checked,
@@ -1682,25 +1774,89 @@ HTML_CONTENT = """<!DOCTYPE html>
                 videoPlayer.src = "";
             }
 
-            // 2. Render Playwright Screenshot Grid
+            // 2. Render Playwright Screenshot Grid grouped by category
             const screenshotsGrid = document.getElementById("screenshots-grid");
             screenshotsGrid.innerHTML = "";
             
             if (data.screenshots && data.screenshots.length > 0) {
+                // Map category identifiers to beautiful Chinese group names
+                const categoryNames = {
+                    "exterior": "外观图组 (Exterior)",
+                    "interior": "内饰图组 (Interior)",
+                    "detail": "细节图组 (Detail)",
+                    "history": "品牌历史 (History)",
+                    "lifestyle": "生活方式 (Lifestyle)",
+                    "technology": "技术与平台 (Technology)",
+                    "platform": "底盘与平台 (Platform)",
+                    "cover": "封面与海报 (Cover)",
+                    "other": "其他图组 (Other)"
+                };
+
+                // Group the screenshots by category
+                const groups = {};
+                
                 data.screenshots.forEach(fname => {
-                    const thumb = document.createElement("div");
-                    thumb.className = "screenshot-thumbnail";
+                    const parts = fname.split("_");
+                    const pageNum = parts.length > 1 ? parseInt(parts[1].split(".")[0]) : null;
                     
-                    const imgUrl = `/outputs/images/${data.project_name}/${fname}?t=${Date.now()}`;
-                    thumb.innerHTML = `
-                        <img src="${imgUrl}" alt="${fname}" onerror="this.src='https://placehold.co/1080x1440/111420/a78bfa?text=PNG+Detail'">
-                        <div class="screenshot-label">${fname}</div>
-                    `;
-                    thumb.onclick = () => openLightbox(imgUrl);
-                    screenshotsGrid.appendChild(thumb);
+                    let cat = "other";
+                    if (pageNum !== null && data.matched_assets) {
+                        const matchedRow = data.matched_assets.find(r => parseInt(r.page) === pageNum);
+                        if (matchedRow && matchedRow.category) {
+                            cat = matchedRow.category.toLowerCase().trim();
+                        } else if (matchedRow && matchedRow.role === "cover") {
+                            cat = "cover";
+                        }
+                    }
+                    
+                    if (!groups[cat]) {
+                        groups[cat] = [];
+                    }
+                    groups[cat].push(fname);
+                });
+
+                // Display each non-empty category group
+                Object.keys(categoryNames).forEach(cat => {
+                    const fnames = groups[cat];
+                    if (fnames && fnames.length > 0) {
+                        const groupContainer = document.createElement("div");
+                        groupContainer.className = "category-group";
+                        
+                        const title = document.createElement("h4");
+                        title.style.fontSize = "14px";
+                        title.style.fontWeight = "700";
+                        title.style.color = "#a78bfa";
+                        title.style.marginBottom = "12px";
+                        title.style.display = "flex";
+                        title.style.alignItems = "center";
+                        title.style.gap = "8px";
+                        title.innerHTML = `<i class="fa-solid fa-folder-open" style="font-size: 13px;"></i> ${categoryNames[cat]}`;
+                        groupContainer.appendChild(title);
+                        
+                        const grid = document.createElement("div");
+                        grid.style.display = "grid";
+                        grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(120px, 1fr))";
+                        grid.style.gap = "12px";
+                        
+                        fnames.forEach(fname => {
+                            const thumb = document.createElement("div");
+                            thumb.className = "screenshot-thumbnail";
+                            
+                            const imgUrl = `/outputs/images/${data.project_name}/${fname}?t=${Date.now()}`;
+                            thumb.innerHTML = `
+                                <img src="${imgUrl}" alt="${fname}" onerror="this.src='https://placehold.co/1080x1440/111420/a78bfa?text=PNG+Detail'">
+                                <div class="screenshot-label">${fname}</div>
+                            `;
+                            thumb.onclick = () => openLightbox(imgUrl);
+                            grid.appendChild(thumb);
+                        });
+                        
+                        groupContainer.appendChild(grid);
+                        screenshotsGrid.appendChild(groupContainer);
+                    }
                 });
             } else {
-                screenshotsGrid.innerHTML = '<div style="grid-column: 1/-1; padding: 30px; text-align: center; color: var(--text-muted);">暂未输出图片分片</div>';
+                screenshotsGrid.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-muted);">暂未输出图片分片</div>';
             }
 
             // 3. Render Downloadable Reports list
@@ -1774,7 +1930,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                         btn.innerHTML = '<i class="fa-solid fa-stop"></i> 强行终止工作流';
                         
                         setSystemState("running", "工作流背景执行中...");
-                        startTimer();
+                        startTimer(data.elapsed || 0);
                         pollInterval = setInterval(pollStatus, 500);
                     }
                 })
