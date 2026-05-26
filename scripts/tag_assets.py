@@ -17,6 +17,7 @@ parser.add_argument("--series", default=None)
 parser.add_argument("--name", default="project")
 parser.add_argument("--move", action="store_true")
 parser.add_argument("--vision", action="store_true", help="Use vision model for tagging instead of keyword heuristics.")
+parser.add_argument("--vision-model", default=None, help="Specific vision model to use for tagging (e.g. mikgr/doctype-classifier-vl).")
 args = parser.parse_args()
 
 records = tag_assets(
@@ -28,6 +29,7 @@ records = tag_assets(
     series=args.series,
     move=args.move,
     use_vision=args.vision,
+    vision_model=args.vision_model,
 )
 reports = write_reports(records, ROOT / "outputs" / "reports", args.name)
 print("DONE")

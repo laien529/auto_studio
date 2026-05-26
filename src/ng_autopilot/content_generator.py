@@ -14,8 +14,19 @@ def build_prompt(root: Path, topic: str, column: str, angle: str, context: str =
     )
 
 
-def generate_openai(root: Path, topic: str, column: str, angle: str, context: str = "", model: str = "gpt-4.1-mini") -> dict:
+def load_settings(root: Path) -> dict:
+    try:
+        return json.loads((root / "config" / "settings.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def generate_openai(root: Path, topic: str, column: str, angle: str, context: str = "", model: str | None = None) -> dict:
     from openai import OpenAI
+
+    if not model:
+        settings = load_settings(root)
+        model = settings.get("default_model_openai", "gpt-4.1-mini")
 
     client = OpenAI()
     prompt = build_prompt(root, topic, column, angle, context)
@@ -29,17 +40,36 @@ def generate_openai(root: Path, topic: str, column: str, angle: str, context: st
     return json.loads(resp.choices[0].message.content)
 
 
-def generate_ollama(root: Path, topic: str, column: str, angle: str, context: str = "", model: str = "qwen2.5vl") -> dict:
+def generate_ollama(root: Path, topic: str, column: str, angle: str, context: str = "", model: str | None = None) -> dict:
     from langchain_ollama import ChatOllama
 
+    settings = load_settings(root)
+    if not model:
+        model = settings.get("default_model_ollama", "qwen2.5vl")
+
+    import os
+    num_cores = os.cpu_count() or 4
+    num_threads = settings.get("ollama_num_thread", max(1, num_cores // 2))
+    num_ctx = settings.get("ollama_num_ctx", 2048)
+
     prompt = build_prompt(root, topic, column, angle, context)
-    llm = ChatOllama(model=model, temperature=0.65)
+    llm = ChatOllama(model=model, temperature=0.65, num_ctx=num_ctx, num_thread=num_threads)
     resp = llm.invoke(prompt)
     text = resp.content
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1:
         raise ValueError("模型没有输出合法JSON。")
+
+    # Unload the model to free memory
+    try:
+        print(f"  Unloading text model ({model}) to free memory...")
+        import ollama
+        client = ollama.Client()
+        client.chat(model=model, keep_alive=0)
+    except Exception as e:
+        print(f"  Warning: Failed to unload text model: {e}")
+
     return json.loads(text[start:end + 1])
 
 

@@ -158,6 +158,20 @@ Do not include any other text or explanations in your response.
         else:
             client = ollama.Client()
         
+        # Dynamically limit thread count and context size to avoid memory swap and CPU freezing
+        import os
+        num_cores = os.cpu_count() or 4
+        num_threads = max(1, num_cores // 2)
+        num_ctx = 2048
+        try:
+            settings_path = Path(__file__).resolve().parents[2] / "config" / "settings.json"
+            if settings_path.exists():
+                settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
+                num_threads = settings_data.get("ollama_num_thread", num_threads)
+                num_ctx = settings_data.get("ollama_num_ctx", num_ctx)
+        except Exception:
+            pass
+
         response = client.chat(
             model=model_name,
             messages=[
@@ -168,6 +182,10 @@ Do not include any other text or explanations in your response.
                 }
             ],
             format=ImageClassification.model_json_schema(),
+            options={
+                "num_thread": num_threads,
+                "num_ctx": num_ctx
+            }
         )
         result_text = response.get("message", {}).get("content", "")
         try:
@@ -198,7 +216,7 @@ def next_available_path(path: Path) -> Path:
             return candidate
         i += 1
 
-def tag_assets(root: Path, inbox: Path, library: Path, brand=None, model=None, series=None, move=False, use_vision=False) -> List[AssetRecord]:
+def tag_assets(root: Path, inbox: Path, library: Path, brand=None, model=None, series=None, move=False, use_vision=False, vision_model=None) -> List[AssetRecord]:
     cfg = load_config(root)
     brand = brand or cfg["default_brand"]
     model = model or cfg["default_model"]
@@ -237,9 +255,23 @@ def tag_assets(root: Path, inbox: Path, library: Path, brand=None, model=None, s
                         raise ValueError("'vision_config' section not found in tagger_config.json. It's required for --vision mode.")
 
                     api_base = vision_config.get("api_base")
-                    model_to_use = vision_config.get("model")
-                    if not model_to_use:
-                        raise ValueError("'model' must be specified in 'vision_config'.")
+                    if vision_model:
+                        model_to_use = vision_model
+                    else:
+                        model_to_use = None
+                        try:
+                            settings_path = root / "config" / "settings.json"
+                            if settings_path.exists():
+                                settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
+                                model_to_use = settings_data.get("default_model_vision")
+                        except Exception:
+                            pass
+                        
+                        if not model_to_use:
+                            model_to_use = vision_config.get("model")
+                            
+                        if not model_to_use:
+                            raise ValueError("'model' must be specified in 'vision_config' or 'settings.json'.")
 
                 print(f"  Calling vision model ({model_to_use})...")
                 category, tag, score = _classify_image_with_vision_model(api_base, img_path, cfg, brand, model, model_name=model_to_use)
@@ -281,6 +313,16 @@ def tag_assets(root: Path, inbox: Path, library: Path, brand=None, model=None, s
             brand=brand, model=model, series=series, category=category, tag=tag,
             width=w, height=h, aspect_ratio=ratio, score=score, sha1=sha1
         ))
+
+    if use_vision and model_to_use:
+        try:
+            print(f"  Unloading vision model ({model_to_use}) to free memory...")
+            host = api_base[:-3] if (api_base and api_base.endswith("/v1")) else api_base
+            client = ollama.Client(host=host) if host else ollama.Client()
+            client.chat(model=model_to_use, keep_alive=0)
+        except Exception as e:
+            print(f"  Warning: Failed to unload vision model: {e}")
+
     return records
 
 def write_reports(records: List[AssetRecord], out_dir: Path, name: str) -> dict:

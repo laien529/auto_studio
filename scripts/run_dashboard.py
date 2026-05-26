@@ -38,12 +38,15 @@ class PipelineManager:
         self.logs.append("Initializing Auto Studio Autopilot Dashboard...\n")
         
         try:
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
             self.process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 bufsize=1,
-                close_fds=True
+                close_fds=True,
+                env=env
             )
             
             # Start background thread to read output
@@ -189,10 +192,83 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/" or self.path == "/index.html":
+            default_ollama = "qwen2.5vl"
+            default_openai = "gpt-4.1-mini"
+            try:
+                settings_path = ROOT / "config" / "settings.json"
+                if settings_path.exists():
+                    settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
+                    default_ollama = settings_data.get("default_model_ollama", "qwen2.5vl")
+                    default_openai = settings_data.get("default_model_openai", "gpt-4.1-mini")
+            except Exception:
+                pass
+                
+            # 1. Dynamically build Ollama dropdown options by querying local Ollama tags
+            ollama_options_html = f'<option class="opt-ollama" value="{default_ollama}">默认模型 ({default_ollama})</option>'
+            try:
+                import ollama
+                
+                host = None
+                cfg_path = ROOT / "config" / "tagger_config.json"
+                if cfg_path.exists():
+                    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+                    host = cfg.get("vision_config", {}).get("api_base")
+                    if host and host.endswith("/v1"):
+                        host = host[:-3]
+                
+                client = ollama.Client(host=host) if host else ollama.Client()
+                response = client.list()
+                
+                if hasattr(response, "models"):
+                    models_list = response.models
+                elif isinstance(response, dict):
+                    models_list = response.get("models", [])
+                else:
+                    models_list = []
+                
+                seen_names = {default_ollama}
+                for m in models_list:
+                    m_name = None
+                    if hasattr(m, "model"):
+                        m_name = m.model
+                    elif hasattr(m, "name"):
+                        m_name = m.name
+                    elif isinstance(m, dict):
+                        m_name = m.get("model") or m.get("name")
+                    else:
+                        m_name = str(m)
+                        
+                    if m_name and m_name not in seen_names:
+                        display_name = m_name
+                        if ":" in m_name:
+                            name_part, tag_part = m_name.split(":", 1)
+                            if tag_part == "latest":
+                                display_name = name_part
+                        ollama_options_html += f'<option class="opt-ollama" value="{m_name}">{display_name}</option>'
+                        seen_names.add(m_name)
+            except Exception:
+                # Local Ollama client fail fallback to static defaults
+                static_ollama = ["qwen2.5vl", "qwen3.5:9b", "deepseek-r1:8b", "llama3.2:latest"]
+                for m in static_ollama:
+                    if m != default_ollama:
+                        ollama_options_html += f'<option class="opt-ollama" value="{m}">{m}</option>'
+
+            # 2. Build OpenAI dropdown options
+            openai_options_html = f'<option class="opt-openai" value="{default_openai}" style="display:none;">默认模型 ({default_openai})</option>'
+            static_openai = ["gpt-4.1-mini", "gpt-4o", "o3-mini"]
+            for m in static_openai:
+                if m != default_openai:
+                    display = "gpt-4o-mini" if m == "gpt-4.1-mini" else m
+                    openai_options_html += f'<option class="opt-openai" value="{m}" style="display:none;">{display}</option>'
+                
+            # Replace placeholders in HTML
+            html = HTML_CONTENT.replace("{{DEFAULT_OLLAMA_MODEL}}", default_ollama).replace("{{DEFAULT_OPENAI_MODEL}}", default_openai)
+            html = html.replace("{{OLLAMA_MODEL_OPTIONS}}", ollama_options_html).replace("{{OPENAI_MODEL_OPTIONS}}", openai_options_html)
+            
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_CONTENT.encode("utf-8"))
+            self.wfile.write(html.encode("utf-8"))
             return
         
         if self.path.startswith("/api/status"):
@@ -269,6 +345,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             # Map parameters to command-line args for scripts/run_pipeline.py
             cmd = [
                 sys.executable,
+                "-u",
                 str(ROOT / "scripts" / "run_pipeline.py"),
                 "--name", project_name,
                 "--brand", params.get("brand", "BMW"),
@@ -277,10 +354,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "--topic", params.get("topic", "BMW Neue Klasse i3"),
                 "--column", params.get("column", "新车档案"),
                 "--angle", params.get("angle", "宝马终于开始真正做电动车了"),
-                "--llm-model", params.get("model_name", "qwen2.5vl"),
                 "--provider", params.get("provider", "ollama"),
                 "--scale-factor", str(params.get("scale_factor", 2)),
             ]
+            
+            model_name = params.get("model_name")
+            if model_name and model_name != "default":
+                cmd.extend(["--llm-model", model_name])
             
             if params.get("move"):
                 cmd.append("--move")
@@ -1085,14 +1165,9 @@ HTML_CONTENT = """<!DOCTYPE html>
                             <label for="model_name">大模型名称</label>
                             <select id="model_name">
                                 <!-- Ollama Options -->
-                                <option class="opt-ollama" value="qwen2.5vl">qwen2.5vl (多模态)</option>
-                                <option class="opt-ollama" value="qwen3.5:9b">qwen3.5:9b</option>
-                                <option class="opt-ollama" value="deepseek-r1:8b">deepseek-r1:8b (深度思考)</option>
-                                <option class="opt-ollama" value="llama3.2:latest">llama3.2:latest</option>
+                                {{OLLAMA_MODEL_OPTIONS}}
                                 <!-- OpenAI Options -->
-                                <option class="opt-openai" value="gpt-4.1-mini" style="display:none;">gpt-4o-mini</option>
-                                <option class="opt-openai" value="gpt-4o" style="display:none;">gpt-4o</option>
-                                <option class="opt-openai" value="o3-mini" style="display:none;">o3-mini</option>
+                                {{OPENAI_MODEL_OPTIONS}}
                             </select>
                         </div>
                     </div>
@@ -1109,6 +1184,21 @@ HTML_CONTENT = """<!DOCTYPE html>
                                 <option value="3">4K 极致画质 (3240x4320)</option>
                                 <option value="1">1x 快速预览 (1080x1440)</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label for="brand">汽车品牌 (Brand)</label>
+                            <input type="text" id="brand" value="BMW" placeholder="例如: BMW" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="model">具体车型 (Model)</label>
+                            <input type="text" id="model" value="i3" placeholder="例如: i3" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="series">所属车系 (Series)</label>
+                            <input type="text" id="series" value="Neue Klasse" placeholder="例如: Neue Klasse" required>
                         </div>
                     </div>
 
@@ -1308,11 +1398,11 @@ HTML_CONTENT = """<!DOCTYPE html>
             if (provider === "ollama") {
                 ollamaOpts.forEach(o => o.style.display = "block");
                 openaiOpts.forEach(o => o.style.display = "none");
-                document.getElementById("model_name").value = "qwen2.5vl";
+                document.getElementById("model_name").value = "{{DEFAULT_OLLAMA_MODEL}}";
             } else {
                 ollamaOpts.forEach(o => o.style.display = "none");
                 openaiOpts.forEach(o => o.style.display = "block");
-                document.getElementById("model_name").value = "gpt-4o";
+                document.getElementById("model_name").value = "{{DEFAULT_OPENAI_MODEL}}";
             }
         }
 

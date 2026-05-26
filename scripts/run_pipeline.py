@@ -35,11 +35,25 @@ def main():
     parser.add_argument("--topic", default=None, help="Topic for LLM content generation (required if --content is not provided).")
     parser.add_argument("--column", default="新车档案", help="Column style name for LLM content generation.")
     parser.add_argument("--angle", default=None, help="Angle/hook for LLM content generation copywriting.")
-    parser.add_argument("--llm-model", default="qwen2.5vl", help="LLM model name to use for content generation.")
+    parser.add_argument("--llm-model", default=None, help="LLM model name to use for content generation. If not specified, dynamically resolved from config/settings.json based on provider.")
     parser.add_argument("--provider", default="ollama", choices=["ollama", "openai"], help="LLM provider for content generation.")
     parser.add_argument("--scale-factor", type=int, default=2, help="Device scale factor for Playwright rendering (1 for standard, 2 for Retina 2K, 3 for 3K).")
     
     args = parser.parse_args()
+    
+    if not args.llm_model:
+        try:
+            settings_path = ROOT / "config" / "settings.json"
+            if settings_path.exists():
+                settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
+                if args.provider == "ollama":
+                    args.llm_model = settings_data.get("default_model_ollama", "qwen2.5vl")
+                else:
+                    args.llm_model = settings_data.get("default_model_openai", "gpt-4.1-mini")
+        except Exception:
+            pass
+        if not args.llm_model:
+            args.llm_model = "qwen2.5vl" if args.provider == "ollama" else "gpt-4.1-mini"
     
     # Validate arguments
     if not args.skip_generation and not args.content:
@@ -70,6 +84,7 @@ def main():
             series=args.series,
             move=args.move,
             use_vision=args.vision,
+            vision_model=args.llm_model,
         )
         reports = write_reports(records, ROOT / "outputs" / "reports", args.name)
         print(f"  DONE: Tagged {len(records)} assets.")

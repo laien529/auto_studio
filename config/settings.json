@@ -7,6 +7,9 @@
   },
   "default_model_openai": "gpt-4.1-mini",
   "default_model_ollama": "qwen2.5vl",
+  "default_model_vision": "qwen2.5vl",
+  "ollama_num_thread": 4,
+  "ollama_num_ctx": 2048,
   "miit": {
     "announcement_pages": [
       "https://www.miit-eidc.org.cn/col/col1691/index.html",

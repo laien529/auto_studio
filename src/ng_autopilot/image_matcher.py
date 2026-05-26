@@ -119,7 +119,38 @@ def match_images(content: dict, assets_root: Path, out_assets: Path, csv_path: P
         ext = best_img.suffix.lower()
         filename = f"page_{page_num}{ext}"
         target = out_assets / filename
-        shutil.copy2(best_img, target)
+        # Downscale and compress matched image using PIL (Pillow) to reduce RAM load in Chromium
+        try:
+            from PIL import Image
+            with Image.open(best_img) as img:
+                w, h = img.size
+                max_dim = 2160
+                if w > max_dim or h > max_dim:
+                    if w >= h:
+                        new_w = max_dim
+                        new_h = int(h * max_dim / w)
+                    else:
+                        new_h = max_dim
+                        new_w = int(w * max_dim / h)
+                    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                
+                fmt = img.format or best_img.suffix.strip('.').upper()
+                if fmt == 'MPO':
+                    fmt = 'JPEG'
+                
+                if fmt in ('JPEG', 'JPG'):
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    img.save(target, format='JPEG', quality=90)
+                elif fmt == 'PNG':
+                    img.save(target, format='PNG', optimize=True)
+                elif fmt == 'WEBP':
+                    img.save(target, format='WEBP', quality=90)
+                else:
+                    shutil.copy2(best_img, target)
+        except Exception as e:
+            print(f"  Warning: PIL image downscaling failed for {best_img.name}: {e}. Falling back to copy.")
+            shutil.copy2(best_img, target)
 
         row = {
             "page": page_num,

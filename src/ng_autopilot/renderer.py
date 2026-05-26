@@ -44,7 +44,11 @@ def export_png_with_playwright(
         page = browser.new_page(
             viewport={"width": width, "height": height}, device_scale_factor=device_scale_factor
         )
+        # Set standard action timeout to 60 seconds to prevent crashes under high RAM pressure
+        page.set_default_timeout(60000)
+
         for f in files:
             page.goto(f.resolve().as_uri(), wait_until="networkidle")
-            page.screenshot(path=str(png_dir / f"{f.stem}.png"), full_page=True)
+            # Explicitly pass 60,000ms timeout for screenshot rasterization
+            page.screenshot(path=str(png_dir / f"{f.stem}.png"), full_page=True, timeout=60000)
         browser.close()

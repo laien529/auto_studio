@@ -18,9 +18,20 @@ parser.add_argument("--topic", default="BMW Neue Klasse i3", help="Topic for LLM
 parser.add_argument("--column", default="新车档案", help="Column style name")
 parser.add_argument("--angle", default="宝马终于开始真正做电动车了", help="Angle/hook for the copywriting")
 parser.add_argument("--assets", default="assets/library/BMW/i3", help="Assets library directory path relative to project root")
-parser.add_argument("--model", default="gpt-4.1-mini", help="OpenAI model to use for content generation")
+parser.add_argument("--model", default=None, help="OpenAI model to use for content generation. If not specified, dynamically resolved from config/settings.json.")
 parser.add_argument("--scale-factor", type=int, default=2, help="Device scale factor for Playwright rendering (1 for standard, 2 for Retina 2K, 3 for 3K)")
 args = parser.parse_args()
+
+if not args.model:
+    try:
+        settings_path = ROOT / "config" / "settings.json"
+        if settings_path.exists():
+            settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
+            args.model = settings_data.get("default_model_openai", "gpt-4.1-mini")
+    except Exception:
+        pass
+    if not args.model:
+        args.model = "gpt-4.1-mini"
 
 PROJECT = args.name
 TOPIC = args.topic
